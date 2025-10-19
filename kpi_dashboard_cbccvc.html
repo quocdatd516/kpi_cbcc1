@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KPI Dashboard CBCCVC – 30/70 điểm</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- FileSaver (optional fallback for CSV) -->
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <style>
+    /* Print tweaks */
+    @media print{
+      .no-print{display:none!important}
+      .print\:block{display:block!important}
+    }
+    /* Simple tab underline */
+    .tab-active{border-bottom-width:2px; border-color:#2563eb; color:#1d4ed8;}
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+  <!-- Header -->
+  <header class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
+      <div class="shrink-0 w-10 h-10 rounded-2xl bg-blue-600/10 grid place-items-center text-blue-700 font-bold">KPI</div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-semibold leading-tight">BẢNG ĐÁNH GIÁ CÁN BỘ, CÔNG CHỨC, VIÊN CHỨC – KPI Dashboard (30/70)</h1>
+        <p class="text-sm text-slate-500">Chuẩn hóa theo khung 100 điểm; Tiêu chí chung 30% + Kết quả thực hiện nhiệm vụ (KPI) 70%; xếp loại linh hoạt (Chuẩn chung/TP.HCM).</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2 no-print">
+        <button id="btnSave" class="px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Lưu</button>
+        <button id="btnPrint" class="px-3 py-2 rounded-xl bg-slate-700 text-white hover:bg-black">In/PDF</button>
+        <div class="relative">
+          <button id="btnExport" class="px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">Xuất</button>
+          <div id="exportMenu" class="hidden absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border p-1 text-sm">
+            <button data-export="xlsx" class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50">Excel (.xlsx)</button>
+            <button data-export="csv" class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50">CSV (.csv)</button>
+            <button data-export="json" class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50">JSON (.json)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Identity card -->
+  <section class="max-w-7xl mx-auto px-4 mt-4 grid md:grid-cols-2 gap-4">
+    <div class="bg-white rounded-2xl shadow-sm border p-4">
+      <h2 class="font-semibold mb-3">Thông tin cá nhân</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label class="text-sm">Họ và tên
+          <input id="iName" class="mt-1 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Nguyễn Văn A"/>
+        </label>
+        <label class="text-sm">Chức vụ
+          <input id="iTitle" class="mt-1 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Chuyên viên"/>
+        </label>
+        <label class="text-sm">Đơn vị công tác
+          <input id="iUnit" class="mt-1 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" placeholder="UBND xã ..."/>
+        </label>
+        <label class="text-sm">Mã số CBCCVC
+          <input id="iCode" class="mt-1 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Mã số"/>
+        </label>
+        <label class="text-sm">Kỳ đánh giá
+          <input id="iPeriod" class="mt-1 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Quý III/2025"/>
+        </label>
+        <label class="text-sm">Chế độ xếp loại
+          <select id="iRegime" class="mt-1 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500">
+            <option value="chung">Chuẩn chung (>=90 / >=70 / >=50)</option>
+            <option value="hcm">TP.HCM (>=90 / >=75 / >=50)</option>
+          </select>
+        </label>
+      </div>
+      <div class="mt-3 flex items-center gap-4">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input id="isLeader" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"/>
+          <span>Đối tượng Lãnh đạo/Quản lý</span>
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input id="allowHalf" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked/>
+          <span>Cho phép điểm lẻ 0,5</span>
+        </label>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input id="penaltyOn" type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"/>
+          <span>Bật trừ điểm bổ sung</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="bg-gradient-to-br from-blue-50 to-emerald-50 rounded-2xl border p-4">
+      <h2 class="font-semibold mb-3">Khung điểm & công thức</h2>
+      <ul class="text-sm list-disc pl-5 space-y-1">
+        <li><b>Tổng 100 điểm</b> = 30 điểm (Tiêu chí chung) + 70 điểm (KPI).</li>
+        <li><b>KPI không lãnh đạo</b>: (a + b + c) / 3, sau đó quy đổi × 0,70.</li>
+        <li><b>KPI lãnh đạo</b>: (a + b + c + d + đ + e) / 6, quy đổi × 0,70.</li>
+        <li><b>Xếp loại Chuẩn chung</b>: Xuất sắc ≥ 90; Tốt ≥ 70; Hoàn thành ≥ 50; Không hoàn thành &lt; 50.</li>
+        <li><b>Xếp loại TP.HCM</b>: Xuất sắc ≥ 90; Tốt ≥ 75; Hoàn thành ≥ 50; Không hoàn thành &lt; 50.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <nav class="max-w-7xl mx-auto px-4 mt-6 no-print">
+    <ul id="tabs" class="flex gap-4 text-sm font-medium">
+      <li><button data-tab="tabA" class="pb-2 border-b-2 border-transparent">I. Tiêu chí chung (30)</button></li>
+      <li><button data-tab="tabB" class="pb-2 border-b-2 border-transparent">II. KPI (70)</button></li>
+      <li><button data-tab="tabDash" class="pb-2 border-b-2 border-transparent">III. Tổng hợp & Xếp loại</button></li>
+    </ul>
+  </nav>
+
+  <!-- Content panels -->
+  <main class="max-w-7xl mx-auto px-4 mt-2 space-y-6">
+    <!-- Panel A: Tiêu chí chung 30 điểm -->
+    <section id="tabA" class="bg-white rounded-2xl shadow-sm border p-4">
+      <h3 class="font-semibold text-lg mb-4">I. Tiêu chí chung – tối đa 30 điểm</h3>
+      <p class="text-sm text-slate-600 mb-4">Gợi ý cấu trúc 9 + 9 + 12 điểm (Phẩm chất/ Kỷ luật; Năng lực/Trách nhiệm; Đổi mới/Sáng tạo).</p>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">I.1 Phẩm chất & Kỷ luật <span class="text-slate-500 text-xs">(tối đa 9)</span></h4>
+          <input id="g1" type="number" min="0" max="9" step="0.5" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+        </div>
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">I.2 Năng lực & Trách nhiệm <span class="text-slate-500 text-xs">(tối đa 9)</span></h4>
+          <input id="g2" type="number" min="0" max="9" step="0.5" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+        </div>
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">I.3 Đổi mới & Sáng tạo <span class="text-slate-500 text-xs">(tối đa 12)</span></h4>
+          <input id="g3" type="number" min="0" max="12" step="0.5" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <label class="text-sm">Số điểm bị trừ bổ sung (nếu có)
+          <input id="penalty" type="number" step="0.5" value="0" min="0" class="mt-1 w-40 rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500"/>
+        </label>
+        <span class="ml-auto text-sm">Điểm nhóm I hiện tại: <b id="commonPoints">0</b> / 30</span>
+      </div>
+    </section>
+
+    <!-- Panel B: KPI 70 điểm -->
+    <section id="tabB" class="bg-white rounded-2xl shadow-sm border p-4 hidden">
+      <h3 class="font-semibold text-lg mb-4">II. Kết quả thực hiện nhiệm vụ (KPI) – tối đa 70 điểm</h3>
+      <p class="text-sm text-slate-600 mb-4">Nhập tỷ lệ hoàn thành (%) từng tiêu chí. Hệ thống tự quy đổi sang điểm (tối đa 70).</p>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">II.a Số lượng (%)</h4>
+          <input id="kpi_a" type="number" min="0" max="120" step="1" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+          <p class="text-xs text-slate-500 mt-2">Cho phép vượt 100% để ghi nhận vượt định mức.</p>
+        </div>
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">II.b Chất lượng (%)</h4>
+          <input id="kpi_b" type="number" min="0" max="120" step="1" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+          <p class="text-xs text-slate-500 mt-2">Có thể áp dụng trừ điểm khi phải chỉnh sửa nhiều.</p>
+        </div>
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">II.c Tiến độ (%)</h4>
+          <input id="kpi_c" type="number" min="0" max="120" step="1" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+          <p class="text-xs text-slate-500 mt-2">Đúng hạn 100%; vượt tiến độ &gt;100%.</p>
+        </div>
+      </div>
+      <div id="leaderBlock" class="grid md:grid-cols-3 gap-4 mt-4 hidden">
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">II.d Kết quả hoạt động đơn vị (%)</h4>
+          <input id="kpi_d" type="number" min="0" max="120" step="1" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+        </div>
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">II.đ Tổ chức triển khai (%)</h4>
+          <input id="kpi_dd" type="number" min="0" max="120" step="1" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+        </div>
+        <div class="rounded-xl border p-4">
+          <h4 class="font-semibold">II.e Năng lực tập hợp/đoàn kết (%)</h4>
+          <input id="kpi_e" type="number" min="0" max="120" step="1" value="0" class="mt-2 w-full rounded-xl border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div class="mt-4 text-sm">Điểm nhóm II (quy đổi): <b id="kpiPoints">0.00</b> / 70</div>
+    </section>
+
+    <!-- Panel C: Tổng hợp -->
+    <section id="tabDash" class="bg-white rounded-2xl shadow-sm border p-4 hidden">
+      <h3 class="font-semibold text-lg mb-4">III. Tổng hợp & Xếp loại</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-xl border p-4">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-slate-600">
+                <th class="py-2">Khoản mục</th>
+                <th class="py-2 w-32">Điểm</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t">
+                <td>I. Tiêu chí chung</td>
+                <td id="sumCommon" class="text-right font-semibold">0.00</td>
+              </tr>
+              <tr class="border-t">
+                <td>II. KPI (quy đổi)</td>
+                <td id="sumKPI" class="text-right font-semibold">0.00</td>
+              </tr>
+              <tr class="border-t">
+                <td class="font-medium">Tổng điểm đạt được</td>
+                <td id="sumTotal" class="text-right font-bold">0.00</td>
+              </tr>
+              <tr class="border-t">
+                <td>Điểm bị trừ bổ sung</td>
+                <td id="sumPenalty" class="text-right">0.00</td>
+              </tr>
+              <tr class="border-t">
+                <td class="font-semibold">TỔNG SỐ ĐIỂM CHÍNH THỨC</td>
+                <td id="sumOfficial" class="text-right font-extrabold text-blue-700">0.00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="rounded-2xl border p-4 bg-gradient-to-br from-slate-50 to-white">
+          <h4 class="font-semibold mb-2">Kết quả xếp loại</h4>
+          <div id="rankBadge" class="text-2xl font-bold">—</div>
+          <p class="text-sm text-slate-600 mt-1">Ngưỡng xếp loại theo chế độ: <span id="thresholdText" class="font-medium">—</span></p>
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <button id="btnRecalc" class="px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">Tính lại</button>
+            <button id="btnReset" class="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300">Xoá sạch</button>
+          </div>
+          <div class="mt-4 text-xs text-slate-500">
+            Gợi ý văn phong kết luận: “Căn cứ tổng số điểm chính thức và đối chiếu ngưỡng xếp loại theo chế độ đã chọn, đề nghị xếp loại <span id="rankTextInline" class="font-semibold">—</span> cho ông/bà <span id="nameInline">…</span> (kỳ <span id="periodInline">…</span>).”
+          </div>
+        </div>
+      </div>
+
+      <!-- Simplified printable sheet -->
+      <div class="mt-6 print:block hidden">
+        <h3 class="font-semibold">Phiếu tóm tắt điểm</h3>
+        <p><b>Họ tên:</b> <span id="pName">—</span> &nbsp; <b>Chức vụ:</b> <span id="pTitle">—</span></p>
+        <p><b>Đơn vị:</b> <span id="pUnit">—</span> &nbsp; <b>Kỳ đánh giá:</b> <span id="pPeriod">—</span></p>
+      </div>
+
+      <!-- Data table (for export) -->
+      <div class="mt-6 overflow-x-auto">
+        <table id="exportTable" class="min-w-full text-sm">
+          <thead>
+            <tr class="bg-slate-100 text-left">
+              <th class="px-3 py-2">Trường</th>
+              <th class="px-3 py-2">Giá trị</th>
+            </tr>
+          </thead>
+          <tbody id="exportBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 py-8 text-xs text-slate-500">
+    <p>Ghi chú: Khung 30/70, công thức KPI và các ngưỡng xếp loại được tham chiếu từ dự thảo/nghiệp vụ hiện hành. Cho phép tùy chọn xếp loại theo chuẩn chung hoặc theo hướng dẫn TP.HCM.</p>
+  </footer>
+
+  <script>
+  // ===== Helpers =====
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+  // Fields
+  const fields = {
+    name: $('#iName'), title: $('#iTitle'), unit: $('#iUnit'), code: $('#iCode'), period: $('#iPeriod'),
+    regime: $('#iRegime'), isLeader: $('#isLeader'), allowHalf: $('#allowHalf'), penaltyOn: $('#penaltyOn'),
+    g1: $('#g1'), g2: $('#g2'), g3: $('#g3'), penalty: $('#penalty'),
+    a: $('#kpi_a'), b: $('#kpi_b'), c: $('#kpi_c'), d: $('#kpi_d'), dd: $('#kpi_dd'), e: $('#kpi_e'),
+    leaderBlock: $('#leaderBlock')
+  };
+
+  // Tabs
+  const tabs = $('#tabs');
+  tabs.addEventListener('click', (e)=>{
+    if(e.target.matches('button[data-tab]')){
+      const id = e.target.getAttribute('data-tab');
+      $$('#tabs button').forEach(b=>b.classList.remove('tab-active'));
+      e.target.classList.add('tab-active');
+      ['tabA','tabB','tabDash'].forEach(t=>$('#'+t).classList.toggle('hidden', t!==id));
+    }
+  });
+  // Activate first tab
+  $$('#tabs button')[0].classList.add('tab-active');
+
+  // Leader toggle
+  fields.isLeader.addEventListener('change', ()=>{
+    fields.leaderBlock.classList.toggle('hidden', !fields.isLeader.checked);
+    recalc();
+  });
+
+  // Allow half-step enforcement for number inputs
+  function normalizeStep(v){
+    const allowHalf = fields.allowHalf.checked;
+    if(!allowHalf) return Math.round(v);
+    return Math.round(v*2)/2;
+  }
+
+  // Recalc common points (max 30)
+  function calcCommon(){
+    let g1 = normalizeStep(parseFloat(fields.g1.value||0));
+    let g2 = normalizeStep(parseFloat(fields.g2.value||0));
+    let g3 = normalizeStep(parseFloat(fields.g3.value||0));
+    g1 = clamp(g1,0,9); g2 = clamp(g2,0,9); g3 = clamp(g3,0,12);
+    const sum = g1 + g2 + g3; // max 30
+    $('#commonPoints').textContent = sum.toFixed(2);
+    return sum;
+  }
+
+  // Recalc KPI (max 70)
+  function calcKPI(){
+    const a = clamp(parseFloat(fields.a.value||0),0,200);
+    const b = clamp(parseFloat(fields.b.value||0),0,200);
+    const c = clamp(parseFloat(fields.c.value||0),0,200);
+    let base;
+    if(fields.isLeader.checked){
+      const d = clamp(parseFloat(fields.d.value||0),0,200);
+      const dd = clamp(parseFloat(fields.dd.value||0),0,200);
+      const e = clamp(parseFloat(fields.e.value||0),0,200);
+      base = (a + b + c + d + dd + e) / 6; // 0..200
+    } else {
+      base = (a + b + c) / 3; // 0..200
+    }
+    const ratio = base/100; // 0..2 (allow exceed)
+    const kpiPoints = clamp(ratio * 70, 0, 70); // cap at 70
+    $('#kpiPoints').textContent = kpiPoints.toFixed(2);
+    return kpiPoints;
+  }
+
+  // Rank thresholds text
+  function thresholdDesc(){
+    const reg = fields.regime.value;
+    if(reg==='hcm') return 'Xuất sắc ≥ 90; Tốt ≥ 75; Hoàn thành ≥ 50; Không hoàn thành < 50';
+    return 'Xuất sắc ≥ 90; Tốt ≥ 70; Hoàn thành ≥ 50; Không hoàn thành < 50';
+  }
+
+  // Rank from score
+  function getRank(score){
+    const reg = fields.regime.value;
+    const good = (reg==='hcm') ? 75 : 70;
+    if(score >= 90) return 'Hoàn thành xuất sắc nhiệm vụ';
+    if(score >= good) return 'Hoàn thành tốt nhiệm vụ';
+    if(score >= 50) return 'Hoàn thành nhiệm vụ';
+    return 'Không hoàn thành nhiệm vụ';
+  }
+
+  function recalc(){
+    const common = calcCommon();
+    const kpi = calcKPI();
+    const total = common + kpi; // before penalty
+    const penalty = fields.penaltyOn.checked ? parseFloat(fields.penalty.value||0) : 0;
+    const official = clamp(total - penalty, 0, 100);
+    // Update dashboard
+    $('#sumCommon').textContent = common.toFixed(2);
+    $('#sumKPI').textContent = kpi.toFixed(2);
+    $('#sumTotal').textContent = total.toFixed(2);
+    $('#sumPenalty').textContent = penalty.toFixed(2);
+    $('#sumOfficial').textContent = official.toFixed(2);
+    const rank = getRank(official);
+    $('#rankBadge').textContent = rank;
+    $('#rankTextInline').textContent = rank;
+    $('#thresholdText').textContent = thresholdDesc();
+    // Inline info
+    $('#nameInline').textContent = fields.name.value || '…';
+    $('#periodInline').textContent = fields.period.value || '…';
+    $('#pName').textContent = fields.name.value || '—';
+    $('#pTitle').textContent = fields.title.value || '—';
+    $('#pUnit').textContent = fields.unit.value || '—';
+    $('#pPeriod').textContent = fields.period.value || '—';
+    // Build export table
+    buildExportRows({
+      'Họ tên': fields.name.value,
+      'Chức vụ': fields.title.value,
+      'Đơn vị': fields.unit.value,
+      'Mã CBCCVC': fields.code.value,
+      'Kỳ đánh giá': fields.period.value,
+      'Chế độ xếp loại': fields.regime.value === 'hcm' ? 'TP.HCM' : 'Chuẩn chung',
+      'Lãnh đạo/Quản lý': fields.isLeader.checked? 'Có':'Không',
+      'I.1 Phẩm chất & Kỷ luật (max 9)': parseFloat(fields.g1.value||0),
+      'I.2 Năng lực & Trách nhiệm (max 9)': parseFloat(fields.g2.value||0),
+      'I.3 Đổi mới & Sáng tạo (max 12)': parseFloat(fields.g3.value||0),
+      'II.a Số lượng (%)': parseFloat(fields.a.value||0),
+      'II.b Chất lượng (%)': parseFloat(fields.b.value||0),
+      'II.c Tiến độ (%)': parseFloat(fields.c.value||0),
+      'II.d KQ hoạt động đơn vị (%)': parseFloat(fields.d.value||0),
+      'II.đ Tổ chức triển khai (%)': parseFloat(fields.dd.value||0),
+      'II.e Đoàn kết (%)': parseFloat(fields.e.value||0),
+      'Điểm nhóm I (0-30)': common,
+      'Điểm nhóm II (0-70)': kpi,
+      'Tổng điểm đạt được': total,
+      'Điểm trừ bổ sung': penalty,
+      'TỔNG SỐ ĐIỂM CHÍNH THỨC': official,
+      'Xếp loại': rank
+    });
+  }
+
+  // Build export rows table
+  function buildExportRows(obj){
+    const body = $('#exportBody');
+    body.innerHTML = '';
+    Object.entries(obj).forEach(([k,v])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="px-3 py-2 border-b">${k}</td><td class="px-3 py-2 border-b text-right">${(v??'')}</td>`;
+      body.appendChild(tr);
+    })
+  }
+
+  // Wire input events
+  $$("input, select").forEach(el=>{
+    el.addEventListener('input', recalc);
+    el.addEventListener('change', recalc);
+  });
+
+  // Initial calc
+  recalc();
+
+  // Save/Load to localStorage
+  const KEY = 'kpi_cbccvc_v1';
+  function save(){
+    const data = {};
+    $$("input, select").forEach(el=>{
+      if(el.type==='checkbox') data[el.id] = el.checked; else data[el.id] = el.value;
+    });
+    localStorage.setItem(KEY, JSON.stringify(data));
+  }
+  function load(){
+    const raw = localStorage.getItem(KEY); if(!raw) return;
+    try{
+      const data = JSON.parse(raw);
+      Object.entries(data).forEach(([id,val])=>{
+        const el = $('#'+id); if(!el) return;
+        if(el.type==='checkbox') el.checked = !!val; else el.value = val;
+      });
+      fields.leaderBlock.classList.toggle('hidden', !fields.isLeader.checked);
+      recalc();
+    }catch(e){console.warn(e)}
+  }
+  $('#btnSave').addEventListener('click', ()=>{save(); alert('Đã lưu dữ liệu vào trình duyệt.');});
+  window.addEventListener('load', load);
+
+  // Print
+  $('#btnPrint').addEventListener('click', ()=>{window.print()});
+
+  // Export menu toggle
+  const exportMenu = $('#exportMenu');
+  $('#btnExport').addEventListener('click', ()=>{
+    exportMenu.classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('#btnExport') && !e.target.closest('#exportMenu')) exportMenu.classList.add('hidden');
+  });
+
+  // Export handlers
+  exportMenu.addEventListener('click', (e)=>{
+    const type = e.target.getAttribute('data-export');
+    if(!type) return;
+    if(type==='xlsx') exportXLSX();
+    if(type==='csv') exportCSV();
+    if(type==='json') exportJSON();
+    exportMenu.classList.add('hidden');
+  });
+
+  function gatherExportObject(){
+    // Build from export table rows (already synced in recalc)
+    const obj = {};
+    $$('#exportBody tr').forEach(tr=>{
+      const k = tr.children[0].textContent.trim();
+      const v = tr.children[1].textContent.trim();
+      obj[k] = v;
+    });
+    return obj;
+  }
+
+  function exportXLSX(){
+    const obj = gatherExportObject();
+    const ws = XLSX.utils.json_to_sheet([obj]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'KPI');
+    XLSX.writeFile(wb, `KPI_CBCCVC_${(fields.name.value||'noname').replace(/\s+/g,'_')}.xlsx`);
+  }
+
+  function exportCSV(){
+    const obj = gatherExportObject();
+    const headers = Object.keys(obj).join(',');
+    const values = Object.values(obj).map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+    const csv = headers + "\n" + values;
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    saveAs(blob, `KPI_CBCCVC_${(fields.name.value||'noname').replace(/\s+/g,'_')}.csv`);
+  }
+
+  function exportJSON(){
+    const obj = gatherExportObject();
+    const blob = new Blob([JSON.stringify(obj, null, 2)], {type: 'application/json'});
+    saveAs(blob, `KPI_CBCCVC_${(fields.name.value||'noname').replace(/\s+/g,'_')}.json`);
+  }
+
+  // Buttons recalc/reset
+  $('#btnRecalc').addEventListener('click', recalc);
+  $('#btnReset').addEventListener('click', ()=>{
+    localStorage.removeItem(KEY);
+    $$("input[type='number']").forEach(i=>i.value='0');
+    $$("input[type='text']").forEach(i=>i.value='');
+    fields.isLeader.checked=false; fields.leaderBlock.classList.add('hidden');
+    fields.regime.value='chung'; fields.allowHalf.checked=true; fields.penaltyOn.checked=false;
+    recalc();
+  });
+  </script>
+</body>
+</html>
